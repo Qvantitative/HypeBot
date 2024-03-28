@@ -74,6 +74,12 @@ player.events.on('playerStart', (queue, track) => {
     }
 });
 
+client.on('guildDelete', guild => {
+    // Remove guild from cache
+    client.guilds.cache.delete(guild.id);
+    console.log(`Left the guild: ${guild.name}`);
+});
+
 client.on("ready", (c) => {
     console.log(`Bot is logged in as ${c.user.tag}`);
 
@@ -103,10 +109,6 @@ client.on("ready", (c) => {
             // Load default extractors (including YouTube)
             await player.extractors.loadDefault();
         };
-
-    client.guilds.cache.clear();
-    client.channels.cache.clear();
-    client.users.cache.clear();
 
     // Call the asynchronous function
     setupBot().catch(error => console.error('Error during bot setup:', error));
