@@ -131,9 +131,9 @@ client.on("interactionCreate", async interaction => {
     const hasRequiredRole = member.roles.cache.some(role => role.name === requiredRoleName);
 
     if (!hasRequiredRole) {
-        // If the user doesn't have the required role, send a message and return
-        return interaction.reply({ content: "You do not have permission to use this command.", ephemeral: true });
-    }
+    // If the user doesn't have the required role, simply return without replying
+    return;
+}
 
     try {
         await command.execute({ client, interaction });
