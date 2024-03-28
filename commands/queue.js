@@ -10,14 +10,10 @@ module.exports = {
     execute: async ({ interaction }) => {
         const queue = useQueue(interaction.guild.Id)
 
-        // Check if there is no queue or no tracks in the queue
-        if (!queue) {
-            // If there's no queue, reply with an error message indicating that the bot is not in a voice channel
-            return interaction.reply({ content: "I am **not** in a voice channel", ephemeral: true });
-        }
-        if (!queue.tracks || !queue.currentTrack) {
-            // If there are no tracks in the queue or no current track playing, reply with an error message indicating that there's no queue to display
-            return interaction.reply({ content: "There is **no** queue to **display**", ephemeral: true });
+        // Check if the queue exists and if it's not empty
+        if (!queue || queue.tracks.size === 0) {
+            // If the queue doesn't exist or it's empty, reply with an error message
+            return interaction.reply({ content: "There is no queue to display.", ephemeral: true });
         }
 
         // Get the first 10 songs in the queue
