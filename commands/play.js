@@ -56,7 +56,7 @@ module.exports = {
                 // Search for the song using the discord-player
                 result = await client.player.search(url, {
                     requestedBy: interaction.user,
-                    searchEngine: QueryType.SPOTIFY_SONG
+                    searchEngine: QueryType.AUTO
                 });
 
                 // Check if the result object is empty or undefined
