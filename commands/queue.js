@@ -30,9 +30,7 @@ module.exports = {
             const embed = new MessageEmbed()
                 .setColor('Red')
                 .setDescription(`**Queue** for **session** in **${queue.channel?.name}:**\n${list === '' ? '\n*• No more queued tracks*' : `\n${list}`}\n**Now Playing:** [${queue.currentTrack?.title}](${queue.currentTrack?.url})\n`)
-                .setFooter({
-                    text: `${queue.tracks.size} track(s) in queue`
-                });
+                .setFooter(`${queue.tracks.size} track(s) in queue`);
 
             paginatedMessages.push(embed);
         }
