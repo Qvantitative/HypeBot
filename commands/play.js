@@ -1,113 +1,152 @@
-const { SlashCommandBuilder } = require("@discordjs/builders")
-const { MessageEmbed } = require("discord.js")
-const { QueryType } = require("discord-player")
+const { SlashCommandBuilder } = require("@discordjs/builders");
+const { EmbedBuilder } = require("discord.js");
+const { useMainPlayer, QueryType } = require("discord-player");
 
 module.exports = {
-	data: new SlashCommandBuilder()
-		.setName("play")
-		.setDescription("play a song from YouTube.")
-		.addSubcommand(subcommand =>
-			subcommand
-				.setName("search")
-				.setDescription("Searches for a song and plays it")
-				.addStringOption(option =>
-					option.setName("searchterms").setDescription("search keywords").setRequired(true)
-				)
-		)
+    data: new SlashCommandBuilder()
+        .setName("play")
+        .setDescription("Play a song from YouTube.")
         .addSubcommand(subcommand =>
-			subcommand
-				.setName("playlist")
-				.setDescription("Plays a playlist from YT")
-				.addStringOption(option => option.setName("url").setDescription("the playlist's url").setRequired(true))
-		)
-		.addSubcommand(subcommand =>
-			subcommand
-				.setName("song")
-				.setDescription("Plays a single song from YT")
-				.addStringOption(option => option.setName("url").setDescription("the song's url").setRequired(true))
-		),
-	execute: async ({ client, interaction }) => {
+            subcommand
+                .setName("search")
+                .setDescription("Searches for a song and plays it")
+                .addStringOption(option =>
+                    option.setName("searchterms").setDescription("Search keywords").setRequired(true)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName("playlist")
+                .setDescription("Plays a playlist from YouTube")
+                .addStringOption(option => option.setName("url").setDescription("The playlist's URL").setRequired(true))
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName("song")
+                .setDescription("Plays a single song from YouTube")
+                .addStringOption(option => option.setName("url").setDescription("The song's URL").setRequired(true))
+        ),
+
+    execute: async ({ client, interaction }) => {
+        const player = useMainPlayer();
+        const channel = interaction.member.voice.channel;
+
         // Make sure the user is inside a voice channel
-		if (!interaction.member.voice.channel) return interaction.reply("You need to be in a Voice Channel to play a song.");
+        if (!channel) {
+            return interaction.reply("You need to be in a Voice Channel to play a song.");
+        }
 
         // Create a play queue for the server
-		const queue = await client.player.createQueue(interaction.guild);
+        const queue = await client.player.nodes.create(interaction.guild);
 
         // Wait until you are connected to the channel
-		if (!queue.connection) await queue.connect(interaction.member.voice.channel)
+        if (!queue.connection) {
+            await queue.connect(channel);
+        }
 
-		let embed = new MessageEmbed()
+        const embed = new EmbedBuilder();
 
-		if (interaction.options.getSubcommand() === "song") {
-            let url = interaction.options.getString("url")
-            
-            // Search for the song using the discord-player
-            const result = await client.player.search(url, {
-                requestedBy: interaction.user,
-                searchEngine: QueryType.YOUTUBE_VIDEO
-            })
+        try {
+            const subcommand = interaction.options.getSubcommand();
+            let result;
 
-            // finish if no tracks were found
-            if (result.tracks.length === 0)
-                return interaction.reply("No results")
+            if (subcommand === "song") {
+                let url = interaction.options.getString("url", true);
 
-            // Add the track to the queue
-            const song = result.tracks[0]
-            await queue.addTrack(song)
-            embed
-                .setDescription(`**[${song.title}](${song.url})** has been added to the Queue`)
-                .setThumbnail(song.thumbnail)
-                .setFooter({ text: `Duration: ${song.duration}`})
+                // Search for the song using the discord-player
+                result = await client.player.search(url, {
+                    requestedBy: interaction.user,
+                    searchEngine: QueryType.AUTO
+                });
 
-		}
-        else if (interaction.options.getSubcommand() === "playlist") {
+                // Check if the result object is empty or undefined
+                if (!result || result.tracks.length === 0) {
+                    console.log("No results found.");
+                    return interaction.reply("No results");
+                }
 
-            // Search for the playlist using the discord-player
-            let url = interaction.options.getString("url")
-            const result = await client.player.search(url, {
-                requestedBy: interaction.user,
-                searchEngine: QueryType.YOUTUBE_PLAYLIST
-            })
+                // Add the track to the queue
+                const song = result.tracks[0];
+                await queue.addTrack(song);
+                embed
+                    .setDescription(`**[${song.title}](${song.url})** has been added to the Queue`)
+                    .setThumbnail(song.thumbnail)
+                    .setFooter({ text: `Duration: ${song.duration}` });
+            }
+            else if (subcommand === "playlist") {
+                let url = interaction.options.getString("url", true);
 
-            if (result.tracks.length === 0)
-                return interaction.reply(`No playlists found with ${url}`)
-            
-            // Add the tracks to the queue
-            const playlist = result.playlist
-            await queue.addTracks(result.tracks)
-            embed
-                .setDescription(`**${result.tracks.length} songs from [${playlist.title}](${playlist.url})** have been added to the Queue`)
-                .setThumbnail(playlist.thumbnail)
+                // Search for the playlist using the discord-player
+                result = await client.player.search(url, {
+                    requestedBy: interaction.user,
+                    searchEngine: QueryType.AUTO
+                });
 
-		} 
-        else if (interaction.options.getSubcommand() === "search") {
+                if (result.tracks.length === 0) {
+                    console.log(`No playlists found with URL: ${url}`);
+                    return interaction.reply(`No playlists found with ${url}`);
+                }
 
-            // Search for the song using the discord-player
-            let url = interaction.options.getString("searchterms")
-            const result = await client.player.search(url, {
-                requestedBy: interaction.user,
-                searchEngine: QueryType.AUTO
-            })
+                // Add the tracks to the queue
+                await queue.addTrack(result.tracks);
+                embed
+                    .setDescription(`**${result.tracks.length} songs from [${result.playlist.title}](${result.playlist.url})** have been added to the Queue`)
+                    .setThumbnail(result.playlist.thumbnail);
+            }
+            else if (subcommand === "search") {
+                let searchTerms = interaction.options.getString("searchterms", true);
 
-            // finish if no tracks were found
-            if (result.tracks.length === 0)
-                return interaction.editReply("No results")
-            
-            // Add the track to the queue
-            const song = result.tracks[0]
-            await queue.addTrack(song)
-            embed
-                .setDescription(`**[${song.title}](${song.url})** has been added to the Queue`)
-                .setThumbnail(song.thumbnail)
-                .setFooter({ text: `Duration: ${song.duration}`})
-		}
+                // Search for the song using the discord-player
+                result = await client.player.search(searchTerms, {
+                    requestedBy: interaction.user,
+                    searchEngine: QueryType.AUTO
+                });
 
-        // Play the song
-        if (!queue.playing) await queue.play()
-        
-        // Respond with the embed containing information about the player
-        await interaction.reply({
-            embeds: [embed]
-        })
-	},
-}
+                // Log the length of the search results
+                console.log("Number of tracks found:", result.tracks.length);
+
+                // Finish if no tracks were found
+                if (result.tracks.length === 0) {
+                    console.log("No results found.");
+                    return interaction.reply("No results");
+                }
+
+                // Add the track to the queue
+                const song = result.tracks[0];
+                await queue.addTrack(song);
+                embed
+                    .setDescription(`**[${song.title}](${song.url})** has been added to the Queue`)
+                    .setThumbnail(song.thumbnail)
+                    .setFooter({ text: `Duration: ${song.duration}` });
+            }
+
+            // Respond with the embed containing information about the player
+            await interaction.reply({ embeds: [embed] }); // Changed embed.build() to embed
+
+            // Determine the query based on the subcommand
+            let query;
+            if (subcommand === "search") {
+                query = interaction.options.getString("searchterms", true);
+            } else {
+                query = interaction.options.getString("url", true);
+            }
+
+            try {
+                const { track } = await player.play(channel, query, {
+                    nodeOptions: {
+                        // nodeOptions are the options for guild node (aka your queue in simple word)
+                        metadata: interaction // we can access this metadata object using queue.metadata later on
+                    }
+                });
+
+                return interaction.followUp(`**${track.title}** starting!`);
+            } catch (e) {
+                // let's return error if something failed
+                return interaction.followUp(`Something went wrong: ${e}`);
+            }
+
+        } catch (error) {
+            console.error("Error while executing play command:", error);
+        }
+    }
+};

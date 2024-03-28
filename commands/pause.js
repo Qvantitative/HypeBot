@@ -1,12 +1,14 @@
 const { SlashCommandBuilder } = require("@discordjs/builders")
+const { useQueue, useTimeline } = require('discord-player');
 
 module.exports = {
 	data: new SlashCommandBuilder()
         .setName("pause")
         .setDescription("Pauses the current song"),
-	execute: async ({ client, interaction }) => {
+	execute: async ({ interaction }) => {
         // Get the queue for the server
-		const queue = client.player.getQueue(interaction.guildId)
+		const queue = useQueue(interaction.guild.id);
+        const timeline = useTimeline(interaction.guild.id);
 
         // Check if the queue is empty
 		if (!queue)
@@ -16,8 +18,8 @@ module.exports = {
 		}
 
         // Pause the current song
-		queue.setPaused(true);
-
-        await interaction.reply("Player has been paused.")
+		timeline.paused ? timeline.resume() : timeline.pause();
+        const state = timeline.paused;
+        return interaction.reply({ content: `**Playback** has been **${state ? 'paused' : 'resumed'}**` });
 	},
 }

@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require("@discordjs/builders")
+const {useQueue} = require("discord-player");
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -7,7 +8,7 @@ module.exports = {
 	execute: async ({ client, interaction }) => {
 
         // Get the current queue
-		const queue = client.player.getQueue(interaction.guildId)
+		const queue = useQueue(interaction.guild.id);
 
 		if (!queue)
 		{
@@ -16,7 +17,7 @@ module.exports = {
 		}
 
         // Deletes all the songs from the queue and exits the channel
-		queue.destroy();
+		queue.delete()
 
         await interaction.reply("Why you do this to me?")
 	},
