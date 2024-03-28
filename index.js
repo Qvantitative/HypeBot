@@ -143,15 +143,18 @@ client.on("interactionCreate", async interaction => {
     }
 });
 
+// Function to handle HTTP request errors
+function handleHttpRequestError(error) {
+    console.error('Error occurred during HTTP request:', error);
+    // Handle the error appropriately, e.g., retrying the request
+}
+
 function handleRateLimit() {
     get(`https://discord.com/api/v10/gateway`, ({ statusCode }) => {
         if (statusCode === 429) {
             process.kill(1);
         }
-    }).on('error', (error) => {
-        console.error('Error occurred during HTTP request:', error);
-        // Handle the error appropriately, e.g., retrying the request
-    });
+    }).on('error', handleHttpRequestError);
 }
 
 handleRateLimit();
