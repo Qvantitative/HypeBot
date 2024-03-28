@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require("@discordjs/builders");
-const { MessageEmbed } = require("discord.js");
+const { EmbedBuilder } = require("discord.js");
 const { useQueue } = require('discord-player');
 
 module.exports = {
@@ -27,7 +27,7 @@ module.exports = {
             (currentSong ? `\`[${currentSong.duration}]\` ${currentSong.title} - <@${currentSong.requestedBy.id}>` : "None") +
             `\n\n**Queue**\n${queueString}`;
 
-        const embed = new MessageEmbed()
+        const embed = new EmbedBuilder()
             .setDescription(messageContent)
             .setThumbnail(currentSong ? currentSong.thumbnail : '');
 
