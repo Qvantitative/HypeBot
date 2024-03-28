@@ -25,6 +25,7 @@
     "discord.js": "^14.14.1",
     "distube": "^4.1.1",
     "dotenv": "^16.0.1",
+    "husky": "^9.0.11",
     "mediaplex": "^0.0.9",
     "play-dl": "^1.9.7",
     "punycode.js": "^2.3.1",
