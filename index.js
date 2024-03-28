@@ -156,8 +156,14 @@ const undiciClient = get(`https://discord.com/api/v10/gateway`, ({ statusCode })
     }
 });
 
-// Attach error event listener to the undici client
-undiciClient.on('error', handleSocketError);
+// Function to handle ECONNRESET error
+function handleECONNRESETError(error) {
+    console.error('ECONNRESET error occurred:', error);
+    // Handle the error appropriately
+}
+
+// Assuming undiciClient is the BodyReadable instance where the error occurs
+undiciClient.on('error', handleECONNRESETError);
 
 function handleRateLimit() {
     // Make an HTTP request using the undici client
