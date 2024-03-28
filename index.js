@@ -143,18 +143,25 @@ client.on("interactionCreate", async interaction => {
     }
 });
 
-// Function to handle HTTP request errors
-function handleHttpRequestError(error) {
-    console.error('Error occurred during HTTP request:', error);
-    // Handle the error appropriately, e.g., retrying the request
+// Function to handle socket errors
+function handleSocketError(error) {
+    console.error('Socket error occurred:', error);
+    // Handle the error appropriately
 }
 
+// Create an undici client
+const undiciClient = get(`https://discord.com/api/v10/gateway`, ({ statusCode }) => {
+    if (statusCode === 429) {
+        process.kill(1);
+    }
+});
+
+// Attach error event listener to the undici client
+undiciClient.on('error', handleSocketError);
+
 function handleRateLimit() {
-    get(`https://discord.com/api/v10/gateway`, ({ statusCode }) => {
-        if (statusCode === 429) {
-            process.kill(1);
-        }
-    }).on('error', handleHttpRequestError);
+    // Make an HTTP request using the undici client
+    undiciClient.end();
 }
 
 handleRateLimit();
