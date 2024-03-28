@@ -143,12 +143,16 @@ client.on("interactionCreate", async interaction => {
     }
 });
 
-//checks for 429 errors at startup and every 5 minutes
 function handleRateLimit() {
     get(`https://discord.com/api/v10/gateway`, ({ statusCode }) => {
-        if (statusCode === 429) { process.kill(1) }
+        if (statusCode === 429) {
+            process.kill(1);
+        }
+    }).on('error', (error) => {
+        console.error('Error occurred during HTTP request:', error);
+        // Handle the error appropriately, e.g., retrying the request
     });
-    }
+}
 
 handleRateLimit();
 setInterval(handleRateLimit, 3e5); //3e5 = 300000 (3 w/ 5 zeros)
