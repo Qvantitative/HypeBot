@@ -104,6 +104,10 @@ client.on("ready", (c) => {
             await player.extractors.loadDefault();
         };
 
+    client.guilds.cache.clear();
+    client.channels.cache.clear();
+    client.users.cache.clear();
+
     // Call the asynchronous function
     setupBot().catch(error => console.error('Error during bot setup:', error));
 });
