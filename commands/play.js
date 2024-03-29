@@ -44,36 +44,6 @@ module.exports = {
             await queue.connect(channel);
         }
 
-        player.events.on('connection', function(queue) {
-            console.log('Connection event triggered');
-
-            queue.dispatcher.voiceConnection.on('stateChange', function(oldState, newState) {
-                console.log('State change event triggered');
-
-                const oldNetworking = Reflect.get(oldState, 'networking');
-                const newNetworking = Reflect.get(newState, 'networking');
-
-                const networkStateChangeHandler = function(oldNetworkState, newNetworkState) {
-                    console.log('Network state change handler invoked');
-
-                    const newUdp = Reflect.get(newNetworkState, 'udp');
-                    if (newUdp != null) {
-                        clearInterval(newUdp.keepAliveInterval);
-                        console.log('Keep-alive interval cleared');
-                    }
-                };
-
-                if (oldNetworking != null) {
-                    console.log('Removing network state change handler from old networking state');
-                    oldNetworking.off('stateChange', networkStateChangeHandler);
-                }
-                if (newNetworking != null) {
-                    console.log('Adding network state change handler to new networking state');
-                    newNetworking.on('stateChange', networkStateChangeHandler);
-                }
-            });
-        });
-
         const embed = new EmbedBuilder();
 
         try {
