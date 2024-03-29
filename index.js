@@ -3,10 +3,11 @@ require('dotenv').config();
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v10');
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
-const { VoiceConnectionStatus } = require('@discordjs/voice');
+import { VoiceConnectionStatus } from '@discordjs/voice';
 const { Player } = require("discord-player");
+const { get } = require("https");
 const fs = require('fs');
-const config = require('./config.json');
+const config = require('./config.json')
 const path = require('path');
 
 // Create a new client instance
@@ -21,7 +22,7 @@ const client = new Client({
     ],
 });
 
-client.config = require('./config.json');
+client.config = require('./config.json')
 
 client.commands = new Collection();
 client.aliases = new Collection();
@@ -57,7 +58,7 @@ commandFiles.forEach(file => {
     commands.push(command.data.toJSON());
 });
 
-// this is the entrypoint for discord-player based application
+// This is the entry point for discord-player based application
 const player = new Player(client);
 
 client.player = player;
@@ -74,13 +75,22 @@ player.events.on('playerStart', (queue, track) => {
     }
 });
 
+// v6
+player.events.on('connection', (queue) => {
+    queue.dispatcher.voiceConnection.on('stateChange', (oldState, newState) => {
+        if (oldState.status === VoiceConnectionStatus.Ready && newState.status === VoiceConnectionStatus.Connecting) {
+            queue.dispatcher.voiceConnection.configureNetworking();
+        }
+    });
+});
+
 client.on('guildDelete', guild => {
     // Remove guild from cache
     client.guilds.cache.delete(guild.id);
     console.log(`Left the guild: ${guild.name}`);
 });
 
-client.on("ready", async (c) => {
+client.on("ready", (c) => {
     console.log(`Bot is logged in as ${c.user.tag}`);
 
     // Define a function to asynchronously handle the bot setup tasks
@@ -93,25 +103,25 @@ client.on("ready", async (c) => {
                     console.log(`There are currently ${totalOnline.size} members online in the guild '${guild.name}'!`);
                 })
                 .catch(console.error);
-        });
+});
 
         // Get all ids of the servers
         const guild_ids = client.guilds.cache.map(guild => guild.id);
 
         const rest = new REST({ version: '9' }).setToken(process.env.TOKEN);
         for (const guildId of guild_ids) {
-            rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId),
-                { body: commands })
-                .then(() => console.log(`Successfully updated commands for guild ${guildId}`))
-                .catch(error => console.error(`Failed to update commands for guild ${guildId}`, error));
-        }
+                rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId),
+                    { body: commands })
+                    .then(() => console.log(`Successfully updated commands for guild ${guildId}`))
+                    .catch(error => console.error(`Failed to update commands for guild ${guildId}`, error));
+            }
 
-        // Load default extractors (including YouTube)
-        await player.extractors.loadDefault();
-    };
+            // Load default extractors (including YouTube)
+            await player.extractors.loadDefault();
+        };
 
     // Call the asynchronous function
-    await setupBot().catch(error => console.error('Error during bot setup:', error));
+    setupBot().catch(error => console.error('Error during bot setup:', error));
 });
 
 client.on("interactionCreate", async interaction => {
@@ -131,9 +141,9 @@ client.on("interactionCreate", async interaction => {
     const hasRequiredRole = member.roles.cache.some(role => role.name === requiredRoleName);
 
     if (!hasRequiredRole) {
-        // If the user doesn't have the required role, simply return without replying
-        return;
-    }
+    // If the user doesn't have the required role, simply return without replying
+    return;
+}
 
     try {
         await command.execute({ client, interaction });
@@ -143,42 +153,29 @@ client.on("interactionCreate", async interaction => {
     }
 });
 
-client.on('voiceStateUpdate', (oldState, newState) => {
-    const oldChannel = oldState.channel;
-    const newChannel = newState.channel;
-
-    // Check if a user joined a voice channel
-    if (!oldChannel && newChannel) {
-        // A user joined a voice channel
-        const connection = newChannel.guild.voiceStates.cache.get(newState.id)?.connection;
-        if (connection) {
-            // Handle voice connection state changes
-            handleVoiceConnectionState(connection);
-        }
-    } else if (oldChannel && !newChannel) {
-        // A user left a voice channel
-        const connection = oldChannel.guild.voiceStates.cache.get(oldState.id)?.connection;
-        if (connection) {
-            // Handle voice connection state changes
-            handleVoiceConnectionState(connection);
-        }
+// Create an undici client
+const undiciClient = get(`https://discord.com/api/v10/gateway`, ({ statusCode }) => {
+    if (statusCode === 429) {
+        process.kill(1);
     }
 });
 
-function handleVoiceConnectionState(connection) {
-    connection.on(VoiceConnectionStatus.Ready, () => {
-        console.log('The connection has entered the Ready state - ready to play audio!');
-    });
-
-    connection.on(VoiceConnectionStatus.Disconnected, () => {
-        console.log('The connection has entered the Disconnected state - attempting to reconnect...');
-        // You may choose to attempt to reconnect here
-    });
-
-    connection.on(VoiceConnectionStatus.Destroyed, () => {
-        console.log('The connection has entered the Destroyed state - it has been manually destroyed.');
-    });
+// Function to handle ECONNRESET error
+function handleECONNRESETError(error) {
+    console.error('ECONNRESET error occurred:', error);
+    // Handle the error appropriately
 }
+
+// Assuming undiciClient is the BodyReadable instance where the error occurs
+undiciClient.on('error', handleECONNRESETError);
+
+function handleRateLimit() {
+    // Make an HTTP request using the undici client
+    undiciClient.end();
+}
+
+handleRateLimit();
+setInterval(handleRateLimit, 3e5); //3e5 = 300000 (3 w/ 5 zeros)
 
 client.login(process.env.TOKEN)
     .then(() => {
