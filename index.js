@@ -83,19 +83,20 @@ player.events.on('connection', function(queue) {
 
     const networkStateChangeHandler = function(oldNetworkState, newNetworkState) {
       const newUdp = Reflect.get(newNetworkState, 'udp');
-      if (newUdp != null && newUdp !== undefined) {
+      if (newUdp != null) {
         clearInterval(newUdp.keepAliveInterval);
       }
     };
 
-    if (oldNetworking != null && oldNetworking !== undefined) {
+    if (oldNetworking != null) {
       oldNetworking.off('stateChange', networkStateChangeHandler);
     }
-    if (newNetworking != null && newNetworking !== undefined) {
+    if (newNetworking != null) {
       newNetworking.on('stateChange', networkStateChangeHandler);
     }
   });
 });
+
 client.on('guildDelete', guild => {
     // Remove guild from cache
     client.guilds.cache.delete(guild.id);
