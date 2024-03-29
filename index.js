@@ -76,14 +76,26 @@ player.events.on('playerStart', (queue, track) => {
 });
 
 // v6
-player.events.on('connection', (queue) => {
-    queue.dispatcher.voiceConnection.on('stateChange', (oldState, newState) => {
-        if (oldState.status === VoiceConnectionStatus.Ready && newState.status === VoiceConnectionStatus.Connecting) {
-            queue.dispatcher.voiceConnection.configureNetworking();
-        }
-    });
-});
+player.events.on('connection', function(queue) {
+  queue.dispatcher.voiceConnection.on('stateChange', function(oldState, newState) {
+    const oldNetworking = Reflect.get(oldState, 'networking');
+    const newNetworking = Reflect.get(newState, 'networking');
 
+    const networkStateChangeHandler = function(oldNetworkState, newNetworkState) {
+      const newUdp = Reflect.get(newNetworkState, 'udp');
+      if (newUdp != null && newUdp !== undefined) {
+        clearInterval(newUdp.keepAliveInterval);
+      }
+    };
+
+    if (oldNetworking != null && oldNetworking !== undefined) {
+      oldNetworking.off('stateChange', networkStateChangeHandler);
+    }
+    if (newNetworking != null && newNetworking !== undefined) {
+      newNetworking.on('stateChange', networkStateChangeHandler);
+    }
+  });
+});
 client.on('guildDelete', guild => {
     // Remove guild from cache
     client.guilds.cache.delete(guild.id);
