@@ -86,51 +86,38 @@ client.on('guildDelete', guild => {
     console.log(`Left the guild: ${guild.name}`);
 });
 
-client.on("ready", () => {
-    console.log(`Bot is logged in as ${client.user.tag}`);
+client.on("ready", (c) => {
+    console.log(`Bot is logged in as ${c.user.tag}`);
 
     // Define a function to asynchronously handle the bot setup tasks
-    const setupBot = () => {
-        return new Promise(async (resolve, reject) => {
-            try {
-                // Fetch all members and presences to ensure they are cached
-                await Promise.all(client.guilds.cache.map(async guild => {
-                    try {
-                        const fetchedMembers = await guild.members.fetch({ withPresences: true });
-                        const totalOnline = fetchedMembers.filter(member => member.presence?.status === 'online');
-                        console.log(`There are currently ${totalOnline.size} members online in the guild '${guild.name}'!`);
-                    } catch (error) {
-                        console.error(`Error fetching members for guild '${guild.name}':`, error);
-                    }
-                }));
+    const setupBot = async () => {
+        // Fetch all members and presences to ensure they are cached
+        await client.guilds.cache.forEach(guild => {
+            guild.members.fetch({ withPresences: true })
+                .then(fetchedMembers => {
+                    const totalOnline = fetchedMembers.filter(member => member.presence?.status === 'online');
+                    console.log(`There are currently ${totalOnline.size} members online in the guild '${guild.name}'!`);
+                })
+                .catch(console.error);
+});
 
-                // Get all ids of the servers
-                const guild_ids = client.guilds.cache.map(guild => guild.id);
+        // Get all ids of the servers
+        const guild_ids = client.guilds.cache.map(guild => guild.id);
 
-                const rest = new REST({ version: '9' }).setToken(process.env.TOKEN);
-                await Promise.all(guild_ids.map(async guildId => {
-                    try {
-                        await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId), { body: commands });
-                        console.log(`Successfully updated commands for guild ${guildId}`);
-                    } catch (error) {
-                        console.error(`Failed to update commands for guild ${guildId}`, error);
-                    }
-                }));
-
-                // Load default extractors (including YouTube)
-                await player.extractors.loadDefault();
-
-                resolve(); // Resolve the promise once setup is complete
-            } catch (error) {
-                reject(error); // Reject the promise if there's an error
+        const rest = new REST({ version: '9' }).setToken(process.env.TOKEN);
+        for (const guildId of guild_ids) {
+                rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId),
+                    { body: commands })
+                    .then(() => console.log(`Successfully updated commands for guild ${guildId}`))
+                    .catch(error => console.error(`Failed to update commands for guild ${guildId}`, error));
             }
-        });
-    };
+
+            // Load default extractors (including YouTube)
+            await player.extractors.loadDefault();
+        };
 
     // Call the asynchronous function
-    setupBot()
-        .then(() => console.log('Bot setup completed successfully.'))
-        .catch(error => console.error('Error during bot setup:', error));
+    setupBot().catch(error => console.error('Error during bot setup:', error));
 });
 
 client.on("interactionCreate", async interaction => {
