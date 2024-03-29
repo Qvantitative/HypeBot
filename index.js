@@ -32,69 +32,53 @@ const commands = [];
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, "commands");
 
-// Asynchronous approach using fs.readdir
+// Error handling for fs.readdir
 fs.readdir('./commands/', (err, files) => {
-    if (err) return console.log('Could not find any commands!');
+    if (err) {
+        console.error('Error reading commands directory:', err);
+        return;
+    }
     const jsFiles = files.filter(f => f.endsWith('.js')); // Filter JS files
-    if (jsFiles.length <= 0) return console.log('Could not find any commands!');
+    if (jsFiles.length <= 0) {
+        console.log('No command files found.');
+        return;
+    }
 
     // Load each command file asynchronously
     jsFiles.forEach(file => {
-        const command = require(`./commands/${file}`);
-        console.log(`Loaded ${file}`);
-        client.commands.set(command.name, command);
-        if (command.aliases) {
-            command.aliases.forEach(alias => client.aliases.set(alias, command.name));
+        try {
+            const command = require(`./commands/${file}`);
+            console.log(`Loaded ${file}`);
+            client.commands.set(command.name, command);
+            if (command.aliases) {
+                command.aliases.forEach(alias => client.aliases.set(alias, command.name));
+            }
+        } catch (error) {
+            console.error(`Error loading command from file ${file}:`, error);
         }
     });
 });
 
-// Synchronous approach using fs.readdirSync
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-commandFiles.forEach(file => {
-    const command = require(path.join(commandsPath, file));
-    client.commands.set(command.data.name, command);
-    commands.push(command.data.toJSON());
-});
+// Error handling for synchronous fs.readdirSync
+try {
+    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+    commandFiles.forEach(file => {
+        try {
+            const command = require(path.join(commandsPath, file));
+            client.commands.set(command.data.name, command);
+            commands.push(command.data.toJSON());
+        } catch (error) {
+            console.error(`Error loading command from file ${file}:`, error);
+        }
+    });
+} catch (error) {
+    console.error('Error reading commands directory synchronously:', error);
+}
 
 // This is the entry point for discord-player based application
 const player = new Player(client);
 
 client.player = player;
-
-// This event is emitted whenever discord-player starts to play a track
-player.events.on('playerStart', (queue, track) => {
-    // Check if queue.metadata and queue.metadata.channel are defined
-    if (queue.metadata && queue.metadata.channel) {
-        // Send a message indicating that the track has started playing
-        queue.metadata.channel.send(`Started playing **${track.title}**!`);
-    } else {
-        // Log an error if either queue.metadata or queue.metadata.channel is undefined
-        console.error("Either queue.metadata or queue.metadata.channel is undefined.");
-    }
-});
-
-// v6
-player.events.on('connection', function(queue) {
-  queue.dispatcher.voiceConnection.on('stateChange', function(oldState, newState) {
-    const oldNetworking = Reflect.get(oldState, 'networking');
-    const newNetworking = Reflect.get(newState, 'networking');
-
-    const networkStateChangeHandler = function(oldNetworkState, newNetworkState) {
-      const newUdp = Reflect.get(newNetworkState, 'udp');
-      if (newUdp != null) {
-        clearInterval(newUdp.keepAliveInterval);
-      }
-    };
-
-    if (oldNetworking != null) {
-      oldNetworking.off('stateChange', networkStateChangeHandler);
-    }
-    if (newNetworking != null) {
-      newNetworking.on('stateChange', networkStateChangeHandler);
-    }
-  });
-});
 
 client.on('guildDelete', guild => {
     // Remove guild from cache
@@ -102,38 +86,51 @@ client.on('guildDelete', guild => {
     console.log(`Left the guild: ${guild.name}`);
 });
 
-client.on("ready", (c) => {
-    console.log(`Bot is logged in as ${c.user.tag}`);
+client.on("ready", () => {
+    console.log(`Bot is logged in as ${client.user.tag}`);
 
     // Define a function to asynchronously handle the bot setup tasks
-    const setupBot = async () => {
-        // Fetch all members and presences to ensure they are cached
-        await client.guilds.cache.forEach(guild => {
-            guild.members.fetch({ withPresences: true })
-                .then(fetchedMembers => {
-                    const totalOnline = fetchedMembers.filter(member => member.presence?.status === 'online');
-                    console.log(`There are currently ${totalOnline.size} members online in the guild '${guild.name}'!`);
-                })
-                .catch(console.error);
-});
+    const setupBot = () => {
+        return new Promise(async (resolve, reject) => {
+            try {
+                // Fetch all members and presences to ensure they are cached
+                await Promise.all(client.guilds.cache.map(async guild => {
+                    try {
+                        const fetchedMembers = await guild.members.fetch({ withPresences: true });
+                        const totalOnline = fetchedMembers.filter(member => member.presence?.status === 'online');
+                        console.log(`There are currently ${totalOnline.size} members online in the guild '${guild.name}'!`);
+                    } catch (error) {
+                        console.error(`Error fetching members for guild '${guild.name}':`, error);
+                    }
+                }));
 
-        // Get all ids of the servers
-        const guild_ids = client.guilds.cache.map(guild => guild.id);
+                // Get all ids of the servers
+                const guild_ids = client.guilds.cache.map(guild => guild.id);
 
-        const rest = new REST({ version: '9' }).setToken(process.env.TOKEN);
-        for (const guildId of guild_ids) {
-                rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId),
-                    { body: commands })
-                    .then(() => console.log(`Successfully updated commands for guild ${guildId}`))
-                    .catch(error => console.error(`Failed to update commands for guild ${guildId}`, error));
+                const rest = new REST({ version: '9' }).setToken(process.env.TOKEN);
+                await Promise.all(guild_ids.map(async guildId => {
+                    try {
+                        await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId), { body: commands });
+                        console.log(`Successfully updated commands for guild ${guildId}`);
+                    } catch (error) {
+                        console.error(`Failed to update commands for guild ${guildId}`, error);
+                    }
+                }));
+
+                // Load default extractors (including YouTube)
+                await player.extractors.loadDefault();
+
+                resolve(); // Resolve the promise once setup is complete
+            } catch (error) {
+                reject(error); // Reject the promise if there's an error
             }
-
-            // Load default extractors (including YouTube)
-            await player.extractors.loadDefault();
-        };
+        });
+    };
 
     // Call the asynchronous function
-    setupBot().catch(error => console.error('Error during bot setup:', error));
+    setupBot()
+        .then(() => console.log('Bot setup completed successfully.'))
+        .catch(error => console.error('Error during bot setup:', error));
 });
 
 client.on("interactionCreate", async interaction => {
