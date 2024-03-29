@@ -3,7 +3,7 @@ require('dotenv').config();
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v10');
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
-import { VoiceConnectionStatus } from '@discordjs/voice';
+const { VoiceConnectionStatus } = require('@discordjs/voice');
 const { Player } = require("discord-player");
 const { get } = require("https");
 const fs = require('fs');
