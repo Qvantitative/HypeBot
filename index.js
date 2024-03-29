@@ -63,38 +63,8 @@ const player = new Player(client);
 
 client.player = player;
 
-// This event is emitted whenever discord-player starts to play a track
-player.events.on('playerStart', (queue, track) => {
-    // Check if queue.metadata and queue.metadata.channel are defined
-    if (queue.metadata && queue.metadata.channel) {
-        // Send a message indicating that the track has started playing
-        queue.metadata.channel.send(`Started playing **${track.title}**!`);
-    } else {
-        // Log an error if either queue.metadata or queue.metadata.channel is undefined
-        console.error("Either queue.metadata or queue.metadata.channel is undefined.");
-    }
-});
-
-// v6
-player.events.on('connection', function(queue) {
-  queue.dispatcher.voiceConnection.on('stateChange', function(oldState, newState) {
-    const oldNetworking = Reflect.get(oldState, 'networking');
-    const newNetworking = Reflect.get(newState, 'networking');
-
-    const networkStateChangeHandler = function(oldNetworkState, newNetworkState) {
-      const newUdp = Reflect.get(newNetworkState, 'udp');
-      if (newUdp != null) {
-        clearInterval(newUdp.keepAliveInterval);
-      }
-    };
-
-    if (oldNetworking != null) {
-      oldNetworking.off('stateChange', networkStateChangeHandler);
-    }
-    if (newNetworking != null) {
-      newNetworking.on('stateChange', networkStateChangeHandler);
-    }
-  });
+connection.on(VoiceConnectionStatus.Ready, () => {
+	console.log('The connection has entered the Ready state - ready to play audio!');
 });
 
 client.on('guildDelete', guild => {
@@ -165,30 +135,6 @@ client.on("interactionCreate", async interaction => {
         await interaction.reply({ content: "There was an error executing this command" });
     }
 });
-
-// Create an undici client
-const undiciClient = get(`https://discord.com/api/v10/gateway`, ({ statusCode }) => {
-    if (statusCode === 429) {
-        process.kill(1);
-    }
-});
-
-// Function to handle ECONNRESET error
-function handleECONNRESETError(error) {
-    console.error('ECONNRESET error occurred:', error);
-    // Handle the error appropriately
-}
-
-// Assuming undiciClient is the BodyReadable instance where the error occurs
-undiciClient.on('error', handleECONNRESETError);
-
-function handleRateLimit() {
-    // Make an HTTP request using the undici client
-    undiciClient.end();
-}
-
-handleRateLimit();
-setInterval(handleRateLimit, 3e5); //3e5 = 300000 (3 w/ 5 zeros)
 
 client.login(process.env.TOKEN)
     .then(() => {
