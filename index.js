@@ -3,7 +3,7 @@ require('dotenv').config();
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v10');
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
-const { VoiceConnectionStatus, entersState  } = require('@discordjs/voice');
+const { VoiceConnectionStatus, entersState, getVoiceConnection, joinVoiceChannel  } = require('@discordjs/voice');
 const { Player } = require("discord-player");
 const { get } = require("https");
 const fs = require('fs');
@@ -62,19 +62,6 @@ commandFiles.forEach(file => {
 const player = new Player(client);
 
 client.player = player;
-
-connection.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
-	try {
-		await Promise.race([
-			entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
-			entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
-		]);
-		// Seems to be reconnecting to a new channel - ignore disconnect
-	} catch (error) {
-		// Seems to be a real disconnect which SHOULDN'T be recovered from
-		connection.destroy();
-	}
-});
 
 client.on('guildDelete', guild => {
     // Remove guild from cache

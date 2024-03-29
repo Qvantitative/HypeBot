@@ -44,6 +44,27 @@ module.exports = {
             await queue.connect(channel);
         }
 
+        player.events.on('connection', function(queue) {
+          queue.dispatcher.voiceConnection.on('stateChange', function(oldState, newState) {
+            const oldNetworking = Reflect.get(oldState, 'networking');
+            const newNetworking = Reflect.get(newState, 'networking');
+
+            const networkStateChangeHandler = function(oldNetworkState, newNetworkState) {
+              const newUdp = Reflect.get(newNetworkState, 'udp');
+              if (newUdp != null) {
+                clearInterval(newUdp.keepAliveInterval);
+              }
+            };
+
+            if (oldNetworking != null) {
+              oldNetworking.off('stateChange', networkStateChangeHandler);
+            }
+            if (newNetworking != null) {
+              newNetworking.on('stateChange', networkStateChangeHandler);
+            }
+          });
+        });
+
         const embed = new EmbedBuilder();
 
         try {
