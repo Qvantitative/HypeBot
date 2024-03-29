@@ -3,12 +3,12 @@ require('dotenv').config();
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v10');
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { VoiceConnectionStatus } = require('@discordjs/voice');
 const { Player } = require("discord-player");
 const { get } = require("https");
 const fs = require('fs');
-const config = require('./config.json')
+const config = require('./config.json');
 const path = require('path');
-
 // Create a new client instance
 const client = new Client({
     intents: [
@@ -21,7 +21,7 @@ const client = new Client({
     ],
 });
 
-client.config = require('./config.json')
+client.config = require('./config.json');
 
 client.commands = new Collection();
 client.aliases = new Collection();
@@ -93,22 +93,22 @@ client.on("ready", (c) => {
                     console.log(`There are currently ${totalOnline.size} members online in the guild '${guild.name}'!`);
                 })
                 .catch(console.error);
-});
+        });
 
         // Get all ids of the servers
         const guild_ids = client.guilds.cache.map(guild => guild.id);
 
         const rest = new REST({ version: '9' }).setToken(process.env.TOKEN);
         for (const guildId of guild_ids) {
-                rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId),
-                    { body: commands })
-                    .then(() => console.log(`Successfully updated commands for guild ${guildId}`))
-                    .catch(error => console.error(`Failed to update commands for guild ${guildId}`, error));
-            }
+            rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId),
+                { body: commands })
+                .then(() => console.log(`Successfully updated commands for guild ${guildId}`))
+                .catch(error => console.error(`Failed to update commands for guild ${guildId}`, error));
+        }
 
-            // Load default extractors (including YouTube)
-            await player.extractors.loadDefault();
-        };
+        // Load default extractors (including YouTube)
+        await player.extractors.loadDefault();
+    };
 
     // Call the asynchronous function
     setupBot().catch(error => console.error('Error during bot setup:', error));
@@ -131,9 +131,9 @@ client.on("interactionCreate", async interaction => {
     const hasRequiredRole = member.roles.cache.some(role => role.name === requiredRoleName);
 
     if (!hasRequiredRole) {
-    // If the user doesn't have the required role, simply return without replying
-    return;
-}
+        // If the user doesn't have the required role, simply return without replying
+        return;
+    }
 
     try {
         await command.execute({ client, interaction });
@@ -172,6 +172,19 @@ function handleRateLimit() {
 
 handleRateLimit();
 setInterval(handleRateLimit, 3e5); //3e5 = 300000 (3 w/ 5 zeros)
+
+client.on('voiceStateUpdate', (oldState, newState) => {
+    const oldNetworking = Reflect.get(oldState, 'networking');
+    const newNetworking = Reflect.get(newState, 'networking');
+
+    oldNetworking?.off('stateChange', networkStateChangeHandler);
+    newNetworking?.on('stateChange', networkStateChangeHandler);
+});
+
+function networkStateChangeHandler(oldNetworkState, newNetworkState) {
+    const newUdp = Reflect.get(newNetworkState, 'udp');
+    clearInterval(newUdp?.keepAliveInterval);
+}
 
 client.login(process.env.TOKEN)
     .then(() => {

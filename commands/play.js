@@ -141,6 +141,8 @@ module.exports = {
 
                 return interaction.followUp(`**${track.title}** starting!`);
             } catch (e) {
+                // Emit "playerError" event with the error information
+                player.events.emit('playerError', queue, null, e);
                 // let's return error if something failed
                 return interaction.followUp(`Something went wrong: ${e}`);
             }
