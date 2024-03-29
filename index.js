@@ -5,10 +5,10 @@ const { Routes } = require('discord-api-types/v10');
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const { VoiceConnectionStatus } = require('@discordjs/voice');
 const { Player } = require("discord-player");
-const { get } = require("https");
 const fs = require('fs');
 const config = require('./config.json');
 const path = require('path');
+
 // Create a new client instance
 const client = new Client({
     intents: [
@@ -80,7 +80,7 @@ client.on('guildDelete', guild => {
     console.log(`Left the guild: ${guild.name}`);
 });
 
-client.on("ready", (c) => {
+client.on("ready", async (c) => {
     console.log(`Bot is logged in as ${c.user.tag}`);
 
     // Define a function to asynchronously handle the bot setup tasks
@@ -111,7 +111,7 @@ client.on("ready", (c) => {
     };
 
     // Call the asynchronous function
-    setupBot().catch(error => console.error('Error during bot setup:', error));
+    await setupBot().catch(error => console.error('Error during bot setup:', error));
 });
 
 client.on("interactionCreate", async interaction => {
@@ -143,47 +143,41 @@ client.on("interactionCreate", async interaction => {
     }
 });
 
-// Function to handle socket errors
-function handleSocketError(error) {
-    console.error('Socket error occurred:', error);
-    // Handle the error appropriately
-}
+client.on('voiceStateUpdate', (oldState, newState) => {
+    const oldChannel = oldState.channel;
+    const newChannel = newState.channel;
 
-// Create an undici client
-const undiciClient = get(`https://discord.com/api/v10/gateway`, ({ statusCode }) => {
-    if (statusCode === 429) {
-        process.kill(1);
+    // Check if a user joined a voice channel
+    if (!oldChannel && newChannel) {
+        // A user joined a voice channel
+        const connection = newChannel.guild.voiceStates.cache.get(newState.id)?.connection;
+        if (connection) {
+            // Handle voice connection state changes
+            handleVoiceConnectionState(connection);
+        }
+    } else if (oldChannel && !newChannel) {
+        // A user left a voice channel
+        const connection = oldChannel.guild.voiceStates.cache.get(oldState.id)?.connection;
+        if (connection) {
+            // Handle voice connection state changes
+            handleVoiceConnectionState(connection);
+        }
     }
 });
 
-// Function to handle ECONNRESET error
-function handleECONNRESETError(error) {
-    console.error('ECONNRESET error occurred:', error);
-    // Handle the error appropriately
-}
+function handleVoiceConnectionState(connection) {
+    connection.on(VoiceConnectionStatus.Ready, () => {
+        console.log('The connection has entered the Ready state - ready to play audio!');
+    });
 
-// Assuming undiciClient is the BodyReadable instance where the error occurs
-undiciClient.on('error', handleECONNRESETError);
+    connection.on(VoiceConnectionStatus.Disconnected, () => {
+        console.log('The connection has entered the Disconnected state - attempting to reconnect...');
+        // You may choose to attempt to reconnect here
+    });
 
-function handleRateLimit() {
-    // Make an HTTP request using the undici client
-    undiciClient.end();
-}
-
-handleRateLimit();
-setInterval(handleRateLimit, 3e5); //3e5 = 300000 (3 w/ 5 zeros)
-
-client.on('voiceStateUpdate', (oldState, newState) => {
-    const oldNetworking = Reflect.get(oldState, 'networking');
-    const newNetworking = Reflect.get(newState, 'networking');
-
-    oldNetworking?.off('stateChange', networkStateChangeHandler);
-    newNetworking?.on('stateChange', networkStateChangeHandler);
-});
-
-function networkStateChangeHandler(oldNetworkState, newNetworkState) {
-    const newUdp = Reflect.get(newNetworkState, 'udp');
-    clearInterval(newUdp?.keepAliveInterval);
+    connection.on(VoiceConnectionStatus.Destroyed, () => {
+        console.log('The connection has entered the Destroyed state - it has been manually destroyed.');
+    });
 }
 
 client.login(process.env.TOKEN)
