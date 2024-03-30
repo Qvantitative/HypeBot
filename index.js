@@ -166,8 +166,14 @@ function handleECONNRESETError(error) {
 undiciClient.on('error', handleECONNRESETError);
 
 function handleRateLimit() {
-    // Make an HTTP request using the undici client
-    undiciClient.end();
+    try {
+        // Make an HTTP request using the undici client
+        undiciClient.end();
+    } catch (error) {
+        // Handle any errors that occur during the HTTP request
+        console.error('Error occurred during HTTP request:', error);
+        // Optionally, attempt to reconnect or handle the error in another way
+    }
 }
 
 handleRateLimit();
