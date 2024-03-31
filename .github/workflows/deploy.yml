@@ -1,0 +1,30 @@
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install Node.js and npm
+      uses: actions/setup-node@v2
+      with:
+        node-version: '21.5.0'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Build
+      run: npm run build
+
+    - name: Deploy
+      run: |
+        # Replace the following commands with your deployment script
+        ssh root@146.190.162.178 'cd /root/HypeBot && git pull origin main && npm install && npm run build && pm2 restart your-app'
