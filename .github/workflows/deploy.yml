@@ -22,11 +22,10 @@ jobs:
       run: npm install
 
     - name: Set up environment variables
-      env:
-        TOKEN: ${{ secrets.TOKEN }}
-        CLIENT_ID: ${{ secrets.CLIENT_ID }}
-        DP_FORCE_YTDL_MOD: ${{ secrets.DP_FORCE_YTDL_MOD }}
-
+      run: |
+        echo "TOKEN=${{ secrets.TOKEN }}" >> $GITHUB_ENV
+        echo "CLIENT_ID=${{ secrets.CLIENT_ID }}" >> $GITHUB_ENV
+        echo "DP_FORCE_YTDL_MOD=${{ secrets.DP_FORCE_YTDL_MOD }}" >> $GITHUB_ENV
 
     - name: Start the bot
       run: npm start
