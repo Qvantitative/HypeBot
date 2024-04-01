@@ -33,4 +33,4 @@ jobs:
     - name: Deploy
       run: |
         # Replace the following commands with your deployment script
-        ssh root@146.190.162.178 'cd /root/HypeBot && git pull origin main && npm install && node ./index.js'
+        ssh root@146.190.162.178 'cd /root/HypeBot && git pull origin main && npm install && node .'
