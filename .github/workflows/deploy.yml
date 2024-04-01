@@ -21,6 +21,13 @@ jobs:
     - name: Install dependencies
       run: npm install
 
+    - name: Set up environment variables
+      env:
+        TOKEN: ${{ secrets.TOKEN }}
+        CLIENT_ID: ${{ secrets.CLIENT_ID }}
+        DP_FORCE_YTDL_MOD: ${{ secrets.DP_FORCE_YTDL_MOD }}
+
+
     - name: Start the bot
       run: npm start
 
