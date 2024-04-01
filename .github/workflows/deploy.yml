@@ -21,12 +21,14 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Set up environment variables and start the bot
+    - name: Set up environment variables
       run: |
         echo "TOKEN=${{ secrets.TOKEN }}" >> $GITHUB_ENV
         echo "CLIENT_ID=${{ secrets.CLIENT_ID }}" >> $GITHUB_ENV
         echo "DP_FORCE_YTDL_MOD=${{ secrets.DP_FORCE_YTDL_MOD }}" >> $GITHUB_ENV
-        node ./index.js
+
+    - name: Start the bot
+      run: node ./index.js
 
     - name: Deploy
       run: |
