@@ -1,7 +1,7 @@
 {
   "name": "intro",
   "version": "1.0.0",
-  "description": "",
+  "description": "After you have cloned the repo make sure to create a `.env` file with the `TOKEN` and `CLIENT_ID` specified for example",
   "main": "index.js",
   "scripts": {
     "start": "node ./index.js",
@@ -35,5 +35,6 @@
     "utf-8-validate": "^6.0.3",
     "ws": "^8.16.0",
     "youtube-ext": "^1.1.16"
-  }
+  },
+  "keywords": []
 }
