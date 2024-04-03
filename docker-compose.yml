@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  musicbot:
+    build: .
+    container_name: musicbot
+    restart: always
+    depends_on:
+      - mongodb
+    volumes:
+      - C:\Users\miked\OneDrive\Desktop\JS\React\music:/usr/src/app
+    command: ["node", "index.js"]
+
+volumes:
+  mongodb_data:
