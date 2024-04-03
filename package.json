@@ -28,10 +28,12 @@
     "distube": "^4.1.1",
     "dotenv": "^16.0.1",
     "express": "^4.19.2",
+    "formidable": "^3.5.1",
     "husky": "^9.0.11",
     "mediaplex": "^0.0.9",
     "play-dl": "^1.9.7",
     "punycode.js": "^2.3.1",
+    "superagent": "^8.1.2",
     "utf-8-validate": "^6.0.3",
     "ws": "^8.16.0",
     "youtube-ext": "^1.1.16"
