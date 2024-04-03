@@ -20,7 +20,7 @@ services:
       - musicbot_data:/usr/src/app
     command: ["node", "index.js"]
     env_file:
-      - /.env
+      - ./.env
 
 volumes:
   mongodb_data:
