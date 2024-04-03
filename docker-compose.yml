@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   mongodb:
     image: mongo:latest
@@ -16,8 +17,9 @@ services:
     depends_on:
       - mongodb
     volumes:
-      - C:\Users\miked\OneDrive\Desktop\JS\React\music:/usr/src/app
+      - musicbot_data:/usr/src/app
     command: ["node", "index.js"]
 
 volumes:
   mongodb_data:
+  musicbot_data:
