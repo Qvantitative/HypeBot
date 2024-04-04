@@ -2,7 +2,6 @@
 const { MongoClient } = require('mongodb');
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v10');
-const { MessageActionRow, MessageButton } = require('discord-buttons');
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const { Player } = require("discord-player");
 const { get } = require("https");
@@ -41,20 +40,6 @@ async function logSubscription(user) {
         return await collection.find({}).toArray();
     } catch (error) {
         console.error('Error logging subscription to MongoDB:', error);
-    }
-}
-
-// Function to check subscription status from MongoDB
-async function checkSubscriptionStatus(userId) {
-    try {
-        const database = mongoClient.db('subscriptions');
-        const collection = database.collection('subscriptions');
-        // Check if there is a subscription entry for the user ID
-        const subscription = await collection.findOne({ user_id: userId });
-        return subscription !== null;
-    } catch (error) {
-        console.error('Error checking subscription status:', error);
-        return false; // Return false if an error occurs
     }
 }
 
@@ -192,63 +177,11 @@ client.on("interactionCreate", async interaction => {
     }
 
     try {
-        // Check the subscription status of the user from the database
-        const isSubscriber = await checkSubscriptionStatus(interaction.user.id);
-
-        // Create a button row based on subscription status
-        const row = new MessageActionRow();
-
-        // Add buttons based on subscription status
-        if (isSubscriber) {
-            // If the user is a subscriber, add all buttons
-            row.addComponents(
-                new MessageButton()
-                    .setCustomId('button_exit')
-                    .setLabel('Exit')
-                    .setStyle('DANGER'),
-
-                new MessageButton()
-                    .setCustomId('button_pause')
-                    .setLabel('Pause')
-                    .setStyle('PRIMARY'),
-
-                new MessageButton()
-                    .setCustomId('button_play')
-                    .setLabel('Play')
-                    .setStyle('SUCCESS'),
-
-                new MessageButton()
-                    .setCustomId('button_queue')
-                    .setLabel('Queue')
-                    .setStyle('PRIMARY'),
-
-                new MessageButton()
-                    .setCustomId('button_resume')
-                    .setLabel('Resume')
-                    .setStyle('SUCCESS'),
-
-                new MessageButton()
-                    .setCustomId('button_skip')
-                    .setLabel('Skip')
-                    .setStyle('DANGER'),
-
-                new MessageButton()
-                    .setCustomId('button_subscribe')
-                    .setLabel('Subscribe')
-                    .setStyle('SECONDARY')
-            );
-        } else {
-            // If the user is not a subscriber, only add the subscribe button
-            row.addComponents(
-                new MessageButton()
-                    .setCustomId('button_subscribe')
-                    .setLabel('Subscribe')
-                    .setStyle('SECONDARY')
-            );
+        // If the command is 'subscribe', log the subscription
+        if (command.name === 'subscribe') {
+            await logSubscription(interaction.user);
         }
-
-        // Send the button row with the reply
-        await interaction.reply({ content: 'Commands:', components: [row] });
+        await command.execute({ client, interaction });
     } catch (error) {
         console.error(error);
         await interaction.reply({ content: "There was an error executing this command" });
