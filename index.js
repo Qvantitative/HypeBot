@@ -1,13 +1,62 @@
-require('dotenv').config();
-
+// Import necessary libraries
+const { MongoClient } = require('mongodb');
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v10');
+const { MessageActionRow, MessageButton } = require('discord-buttons');
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const { Player } = require("discord-player");
 const { get } = require("https");
 const fs = require('fs');
-const config = require('./config.json')
+const config = require('./config.json');
 const path = require('path');
+
+// Connection URI for MongoDB
+const uri = 'mongodb://localhost:27017';
+const mongoClient = new MongoClient(uri);
+
+// Connect to MongoDB
+async function connectToMongo() {
+    try {
+        await mongoClient.connect();
+        console.log('Connected to MongoDB');
+    } catch (error) {
+        console.error('Error connecting to MongoDB:', error);
+        throw error; // Re-throw the error to propagate it to the caller
+    }
+}
+
+// Function to log subscription into MongoDB
+async function logSubscription(user) {
+    try {
+        const database = mongoClient.db('subscriptions');
+        const collection = database.collection('subscriptions');
+        // Save subscription data to MongoDB
+        await collection.insertOne({
+            user_id: user.id,
+            username: user.username,
+            guild_id: user.guild.id,
+            subscription_date: new Date()
+        });
+        console.log('Subscription logged in MongoDB');
+        return await collection.find({}).toArray();
+    } catch (error) {
+        console.error('Error logging subscription to MongoDB:', error);
+    }
+}
+
+// Function to check subscription status from MongoDB
+async function checkSubscriptionStatus(userId) {
+    try {
+        const database = mongoClient.db('subscriptions');
+        const collection = database.collection('subscriptions');
+        // Check if there is a subscription entry for the user ID
+        const subscription = await collection.findOne({ user_id: userId });
+        return subscription !== null;
+    } catch (error) {
+        console.error('Error checking subscription status:', error);
+        return false; // Return false if an error occurs
+    }
+}
 
 // Create a new client instance
 const client = new Client({
@@ -21,7 +70,7 @@ const client = new Client({
     ],
 });
 
-client.config = require('./config.json')
+client.config = require('./config.json');
 
 client.commands = new Collection();
 client.aliases = new Collection();
@@ -86,11 +135,13 @@ client.on('guildDelete', guild => {
     console.log(`Left the guild: ${guild.name}`);
 });
 
-client.on("ready", (c) => {
+client.on("ready", async (c) => {
     console.log(`Bot is logged in as ${c.user.tag}`);
 
-    // Define a function to asynchronously handle the bot setup tasks
-    const setupBot = async () => {
+    try {
+        // Connect to MongoDB before proceeding with other tasks
+        await connectToMongo();
+
         // Fetch all members and presences to ensure they are cached
         await client.guilds.cache.forEach(guild => {
             guild.members.fetch({ withPresences: true })
@@ -99,25 +150,24 @@ client.on("ready", (c) => {
                     console.log(`There are currently ${totalOnline.size} members online in the guild '${guild.name}'!`);
                 })
                 .catch(console.error);
-});
+        });
 
         // Get all ids of the servers
         const guild_ids = client.guilds.cache.map(guild => guild.id);
 
         const rest = new REST({ version: '9' }).setToken(process.env.TOKEN);
         for (const guildId of guild_ids) {
-                rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId),
-                    { body: commands })
-                    .then(() => console.log(`Successfully updated commands for guild ${guildId}`))
-                    .catch(error => console.error(`Failed to update commands for guild ${guildId}`, error));
-            }
+            rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId),
+                { body: commands })
+                .then(() => console.log(`Successfully updated commands for guild ${guildId}`))
+                .catch(error => console.error(`Failed to update commands for guild ${guildId}`, error));
+        }
 
-            // Load default extractors (including YouTube)
-            await player.extractors.loadDefault();
-        };
-
-    // Call the asynchronous function
-    setupBot().catch(error => console.error('Error during bot setup:', error));
+        // Load default extractors (including YouTube)
+        await player.extractors.loadDefault();
+    } catch (error) {
+        console.error('Error during bot setup:', error);
+    }
 });
 
 client.on("interactionCreate", async interaction => {
@@ -137,12 +187,68 @@ client.on("interactionCreate", async interaction => {
     const hasRequiredRole = member.roles.cache.some(role => role.name === requiredRoleName);
 
     if (!hasRequiredRole) {
-    // If the user doesn't have the required role, simply return without replying
-    return;
-}
+        // If the user doesn't have the required role, simply return without replying
+        return;
+    }
 
     try {
-        await command.execute({ client, interaction });
+        // Check the subscription status of the user from the database
+        const isSubscriber = await checkSubscriptionStatus(interaction.user.id);
+
+        // Create a button row based on subscription status
+        const row = new MessageActionRow();
+
+        // Add buttons based on subscription status
+        if (isSubscriber) {
+            // If the user is a subscriber, add all buttons
+            row.addComponents(
+                new MessageButton()
+                    .setCustomId('button_exit')
+                    .setLabel('Exit')
+                    .setStyle('DANGER'),
+
+                new MessageButton()
+                    .setCustomId('button_pause')
+                    .setLabel('Pause')
+                    .setStyle('PRIMARY'),
+
+                new MessageButton()
+                    .setCustomId('button_play')
+                    .setLabel('Play')
+                    .setStyle('SUCCESS'),
+
+                new MessageButton()
+                    .setCustomId('button_queue')
+                    .setLabel('Queue')
+                    .setStyle('PRIMARY'),
+
+                new MessageButton()
+                    .setCustomId('button_resume')
+                    .setLabel('Resume')
+                    .setStyle('SUCCESS'),
+
+                new MessageButton()
+                    .setCustomId('button_skip')
+                    .setLabel('Skip')
+                    .setStyle('DANGER'),
+
+                new MessageButton()
+                    .setCustomId('button_subscribe')
+                    .setLabel('Subscribe')
+                    .setStyle('SECONDARY')
+            );
+        } else {
+            // If the user is not a subscriber, only add the subscribe button
+            row.addComponents(
+                new MessageButton()
+                    .setCustomId('button_subscribe')
+                    .setLabel('Subscribe')
+                    .setStyle('SECONDARY')
+            );
+        }
+
+        // Send the button row with the reply
+        await interaction.reply({ content: 'Commands:', components: [row] });
     } catch (error) {
         console.error(error);
         await interaction.reply({ content: "There was an error executing this command" });
