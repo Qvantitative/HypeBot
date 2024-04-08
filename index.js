@@ -93,14 +93,22 @@ fs.readdir('./commands/', (err, files) => {
     });
 });
 
-// Error handling for synchronous fs.readdirSync
 try {
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
     commandFiles.forEach(file => {
         try {
             const command = require(path.join(commandsPath, file));
-            client.commands.set(command.data.name, command);
-            commands.push(command.data.toJSON());
+            if (command && command.data && command.data.name) {
+                // New structure with data property
+                client.commands.set(command.data.name, command);
+                commands.push(command.data.toJSON());
+            } else if (command && command.name) {
+                // Old structure without data property
+                client.commands.set(command.name, command);
+                commands.push(command);
+            } else {
+                console.error(`Command file ${file} does not export a valid command object.`);
+            }
         } catch (error) {
             console.error(`Error loading command from file ${file}:`, error);
         }
@@ -225,3 +233,5 @@ client.login(process.env.TOKEN)
     .catch(error => {
         console.error('Error occurred during login:', error);
     });
+
+module.exports = { logSubscription };
