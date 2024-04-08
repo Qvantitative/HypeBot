@@ -18,6 +18,7 @@ services:
       - mongodb
     volumes:
       - musicbot_data:/usr/src/app
+      - /usr/src/app/node_modules
     command: ["node", "index.js"]
 
 volumes:
