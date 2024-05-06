@@ -19,7 +19,7 @@ services:
     volumes:
       - musicbot_data:/usr/src/app
       - /usr/src/app/node_modules
-    command: ["node", "index.js"]
+    command: node ./index.js 2>/dev/null
 
 volumes:
   mongodb_data:

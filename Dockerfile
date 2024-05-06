@@ -34,4 +34,4 @@ RUN npm install -g node-gyp \
 
 COPY . .
 
-CMD [ "node", "index.js" ]
+CMD [ "node", "index.js", "2>/dev/null" ]
