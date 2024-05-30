@@ -1,3 +1,6 @@
+// api/bot.js
+require('dotenv').config();
+
 // Import necessary libraries
 const { MongoClient } = require('mongodb');
 const { REST } = require('@discordjs/rest');
@@ -6,7 +9,7 @@ const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const { Player } = require("discord-player");
 const { get } = require("https");
 const fs = require('fs');
-const config = require('./config.json');
+const config = require('../config.json');
 const path = require('path');
 
 // Connection URI for MongoDB
@@ -55,7 +58,7 @@ const client = new Client({
     ],
 });
 
-client.config = require('./config.json');
+client.config = require('../config.json');
 
 client.commands = new Collection();
 client.aliases = new Collection();
@@ -64,10 +67,11 @@ client.emotes = config.emoji;
 // List of all commands
 const commands = [];
 client.commands = new Collection();
-const commandsPath = path.join(__dirname, "commands");
+// Adjusted path to the commands directory
+const commandsPath = path.join(__dirname, "../commands");
 
 // Error handling for fs.readdir
-fs.readdir('./commands/', (err, files) => {
+fs.readdir(commandsPath, (err, files) => {
     if (err) {
         console.error('Error reading commands directory:', err);
         return;
@@ -81,7 +85,7 @@ fs.readdir('./commands/', (err, files) => {
     // Load each command file asynchronously
     jsFiles.forEach(file => {
         try {
-            const command = require(`./commands/${file}`);
+            const command = require(path.join(commandsPath, file));
             console.log(`Loaded ${file}`);
             client.commands.set(command.name, command);
             if (command.aliases) {
